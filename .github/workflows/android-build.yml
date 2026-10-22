@@ -30,11 +30,24 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Verify source ZIP exists
+        run: |
+          test -f DeepSpace_LoveInfinity_source_update_01.zip
+          unzip -t DeepSpace_LoveInfinity_source_update_01.zip
+
       - name: Extract Android source ZIP
         run: |
           unzip -q DeepSpace_LoveInfinity_source_update_01.zip -d source
 
-      - name: Configure Java and Kotlin targets
+      - name: Verify updated account and pairing code
+        run: |
+          APP="source/DeepSpace_LoveInfinity_v1_local/app/src/main/java/com/loveinfinity/deepspace/MainActivity.kt"
+          test -f "$APP"
+          grep -F "ACCOUNT & PARTNER PAIRING" "$APP"
+          grep -F "Create account" "$APP"
+          grep -F "Create partner pairing code" "$APP"
+
+      - name: Configure Android build
         run: |
           cat > source/DeepSpace_LoveInfinity_v1_local/app/build.gradle.kts <<'EOF'
           plugins {
@@ -50,8 +63,8 @@ jobs:
                   applicationId = "com.loveinfinity.deepspace"
                   minSdk = 26
                   targetSdk = 35
-                  versionCode = 1
-                  versionName = "0.1.0"
+                  versionCode = 2
+                  versionName = "0.2.0"
               }
 
               compileOptions {
@@ -70,6 +83,12 @@ jobs:
           gradle --no-daemon \
             -p source/DeepSpace_LoveInfinity_v1_local \
             assembleDebug
+
+      - name: Verify APK exists
+        run: |
+          APK="source/DeepSpace_LoveInfinity_v1_local/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          ls -lh "$APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

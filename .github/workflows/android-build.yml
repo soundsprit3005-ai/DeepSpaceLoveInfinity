@@ -1,21 +1,25 @@
 
-name: Build DeepSpace LoveInfinity
+name: Build DeepSpace LoveInfinity APK
 
 on:
   workflow_dispatch:
   push:
-    paths:
-      - "DeepSpace_LoveInfinity_source_update_01.zip"
-      - ".github/workflows/android-build.yml"
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -26,17 +30,51 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Extract Android project
+      - name: Extract Android source ZIP
         run: |
           unzip -q DeepSpace_LoveInfinity_source_update_01.zip -d source
 
-      - name: Build APK
+      - name: Configure Java and Kotlin targets
         run: |
-          gradle -p source/DeepSpace_LoveInfinity_v1_local assembleDebug
+          cat > source/DeepSpace_LoveInfinity_v1_local/app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+
+          android {
+              namespace = "com.loveinfinity.deepspace"
+              compileSdk = 35
+
+              defaultConfig {
+                  applicationId = "com.loveinfinity.deepspace"
+                  minSdk = 26
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "0.1.0"
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+
+      - name: Build debug APK
+        run: |
+          gradle --no-daemon \
+            -p source/DeepSpace_LoveInfinity_v1_local \
+            assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: DeepSpace-LoveInfinity-APK
           path: source/DeepSpace_LoveInfinity_v1_local/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
           
